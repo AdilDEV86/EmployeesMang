@@ -1,4 +1,5 @@
 ﻿using API.Employees.Model;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -8,6 +9,7 @@ using System.Threading.Tasks;
 
 namespace API.Employees.Controllers
 {
+    [Authorize]
     [ApiController]
     [Route("api/Employee")]
     public class EmployeeController : ControllerBase
