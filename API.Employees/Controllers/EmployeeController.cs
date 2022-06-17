@@ -1,24 +1,29 @@
 ﻿using API.Employees.Model;
+using Azure.Storage.Blobs;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
 namespace API.Employees.Controllers
 {
-    [Authorize]
+ 
     [ApiController]
     [Route("api/Employee")]
     public class EmployeeController : ControllerBase
     {
         private readonly EmployeeContext _context;
+        private readonly IWebHostEnvironment _env;
 
-        public EmployeeController(EmployeeContext context)
+        public EmployeeController(EmployeeContext context , IWebHostEnvironment env )
         {
             _context = context;
+            _env = env;
         }
 
         // GET: api/Employee
@@ -59,10 +64,14 @@ namespace API.Employees.Controllers
         {
             var tblEmployee = await _context.TblEmployee.FindAsync(id);
 
+           
+
             if (tblEmployee == null)
             {
                 return NotFound();
             }
+            var designationLabel = _context.TblDesignation.Where(s => s.Id == tblEmployee.DesignationID).FirstOrDefault().Designation;
+            tblEmployee.Designation = designationLabel;
 
             return tblEmployee;
         }
@@ -121,10 +130,86 @@ namespace API.Employees.Controllers
 
             return tblEmployee;
         }
+        [HttpPost]
+        [Route("SaveFile")]
+
+        public JsonResult SaveFile()
+        {
+            try
+            {
+                var httpRequest = Request.Form;
+                var postedFile = httpRequest.Files[0];
+                string FileName = postedFile.FileName;
+                var PhysicalPatch = _env.ContentRootPath + "/Photos/" + FileName;
+                using (var stream = new FileStream(PhysicalPatch, FileMode.Create))
+                {
+                    postedFile.CopyTo(stream);
+                }
+
+                return new JsonResult(FileName);
+            }
+            catch (Exception)
+            {
+
+                return new JsonResult("anonymous.jpg");
+            }
+        }
+        private string GenerateFileName(string fileName, string CustomerName)
+        {
+            try
+            {
+                string strFileName = string.Empty;
+                string[] strName = fileName.Split('.');
+                strFileName = CustomerName + DateTime.Now.ToUniversalTime().ToString("yyyy-MM-dd") + "/"
+                   + DateTime.Now.ToUniversalTime().ToString("yyyyMMdd\\THHmmssfff") + "." +
+                   strName[strName.Length - 1];
+                return strFileName;
+            }
+            catch (Exception ex)
+            {
+                return fileName;
+            }
+        }
+        [HttpPost]
+        [Route("SaveFileAzure")]
+        public JsonResult SaveFileAzure()
+        {
+            try
+            {
+                var httpRequest = Request.Form;
+                var postedFile = httpRequest.Files[0];
+                Guid guid = Guid.NewGuid();
+                var filename =  guid.ToString() + postedFile.FileName;
+                var fileUrl = "";
+                BlobContainerClient container = new BlobContainerClient("DefaultEndpointsProtocol=https;AccountName=mystoregejana2020;AccountKey=OfvKSt+QhJmYk+HUuXxxa5FLjcjcoyLIIPYrUudeH4mxfgFKzzfIpkoXBlW4DS17dPjgoI1Eboxs+AStow0CIw==;EndpointSuffix=core.windows.net",
+                "wydadcasa2022");
+               
+                    BlobClient blob = container.GetBlobClient(filename);
+                    using (Stream stream = postedFile.OpenReadStream())
+                    {
+                        blob.Upload(stream);
+                    }
+                    fileUrl = blob.Uri.AbsoluteUri;
+                
+            
+                var result = fileUrl;
+            
+
+                return new JsonResult(result);
+            }
+            catch (Exception ex)
+            {
+
+                return new JsonResult("anonymous.jpg");
+            }
+        }
 
         private bool TblEmployeeExists(int id)
         {
             return _context.TblEmployee.Any(e => e.Id == id);
         }
+
+
+      
     }
 }

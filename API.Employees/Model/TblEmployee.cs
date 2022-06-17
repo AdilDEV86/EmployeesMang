@@ -22,6 +22,9 @@ namespace API.Employees.Model
         public DateTime Doj { get; set; }
         [StringLength(50)]
         public string Gender { get; set; }
+
+        [StringLength(500)]
+        public string PicturePath { get; set; }
         public int IsMarried { get; set; }
         public int IsActive { get; set; }
         public int DesignationID { get; set; }
